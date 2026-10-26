@@ -1,0 +1,1327 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>จักรวาลจิบิ: ระบบสุริยะและการโคจรของดาวเคราะห์ 3D (ม.3)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mali:wght@500;600;700&family=Prompt:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+<script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--ink:#2b1b4d;--pink:#ff6fb5;--yellow:#ffd23f;--cyan:#3ee6ff;--mint:#5df2b0;--violet:#a78bfa;--orange:#ff9f43;--glass:rgba(255,255,255,.13);--glass-b:rgba(255,255,255,.34)}
+html,body{height:100%}
+body{font-family:'Prompt','Mali',sans-serif;color:#fff;overflow:hidden;background:radial-gradient(1100px 700px at 15% 8%,#5b3df0 0%,transparent 60%),radial-gradient(900px 600px at 92% 92%,#0fa3d9 0%,transparent 55%),linear-gradient(160deg,#241562,#3a1f8f 45%,#16498f)}
+button{font-family:inherit;color:inherit;cursor:pointer;border:none;background:none}
+.app{display:grid;grid-template-columns:minmax(0,1fr) 410px;height:100vh;height:100dvh}
+.stage{position:relative;margin:14px 0 14px 14px;border-radius:30px;overflow:hidden;border:3px solid rgba(255,255,255,.38);background:radial-gradient(800px 500px at 50% 45%,rgba(120,90,255,.28),transparent 70%),linear-gradient(180deg,rgba(9,5,38,.78),rgba(18,10,70,.62));box-shadow:0 18px 50px rgba(8,4,40,.55),inset 0 0 60px rgba(150,120,255,.18)}
+#webgl{position:absolute;inset:0}
+#webgl canvas{display:block;cursor:grab;touch-action:none}
+#webgl canvas:active{cursor:grabbing}
+#labels{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.tag{position:absolute;left:0;top:0;display:flex;align-items:center;gap:6px;padding:4px 11px 4px 8px;border-radius:99px;background:rgba(255,255,255,.94);color:var(--ink);font-size:12px;font-weight:600;border:3px solid var(--c,#fff);box-shadow:0 4px 12px rgba(0,0,0,.3);white-space:nowrap;pointer-events:auto;transition:opacity .25s,filter .2s;will-change:transform}
+.tag:hover{filter:brightness(1.06);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.tag .dot{position:relative;width:12px;height:12px;border-radius:50%;background:var(--c,#fff);flex:none}
+.tag .dot::after{content:"";position:absolute;inset:-5px;border-radius:50%;border:2px solid var(--c,#fff);animation:ping 1.8s ease-out infinite}
+.tag.me{background:#fff7c2;font-size:13px}
+@keyframes ping{0%{transform:scale(.5);opacity:.9}100%{transform:scale(1.9);opacity:0}}
+.hud{position:absolute;z-index:5;pointer-events:none}
+.hud>*{pointer-events:auto}
+.hud-tl{left:14px;top:14px;display:flex;flex-direction:column;gap:8px;max-width:calc(100% - 200px)}
+.logo{display:inline-flex;align-items:center;gap:10px;padding:8px 16px 8px 10px;border-radius:99px;background:var(--glass);border:2px solid var(--glass-b);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);width:fit-content}
+.logo .ic{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;background:linear-gradient(135deg,#ffd23f,#ff8a3d);font-size:19px;box-shadow:0 0 16px rgba(255,190,60,.8)}
+.logo b{font-family:'Mali','Prompt',sans-serif;font-size:16px;letter-spacing:.2px;display:block;line-height:1.1}
+.logo small{font-size:11px;color:#d8ceff}
+.live{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.live span{padding:4px 11px;border-radius:99px;background:var(--glass);border:2px solid var(--glass-b);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.live i{font-style:normal;color:var(--yellow);font-weight:600}
+.hint{font-size:11px;color:#d8ceff;padding:3px 10px;width:fit-content;border-radius:99px;background:rgba(0,0,0,.25)}
+.hud-tr{right:14px;top:14px;display:flex;flex-direction:column;gap:7px;align-items:flex-end}
+.vbtn{display:flex;align-items:center;gap:7px;padding:7px 13px;border-radius:99px;font-size:12.5px;font-weight:500;background:var(--glass);border:2px solid var(--glass-b);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);transition:transform .15s,background .2s}
+.vbtn:hover{transform:translateY(-2px);background:rgba(255,255,255,.24)}
+.vbtn.on{background:linear-gradient(135deg,#ff6fb5,#ff9f43);border-color:#fff;box-shadow:0 4px 14px rgba(255,111,181,.5)}
+.dock{position:absolute;z-index:6;left:50%;bottom:14px;transform:translateX(-50%);display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:8px 10px;width:max-content;max-width:calc(100% - 24px);border-radius:26px;background:rgba(20,10,70,.55);border:2px solid var(--glass-b);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px)}
+.dbtn{padding:7px 13px;border-radius:99px;font-size:12.5px;font-weight:500;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.28);transition:transform .15s,background .2s;white-space:nowrap}
+.dbtn:hover{transform:translateY(-2px);background:rgba(255,255,255,.22)}
+.dbtn.on{background:linear-gradient(135deg,#3ee6ff,#5df2b0);color:var(--ink);border-color:#fff;font-weight:600}
+.seg{display:flex;gap:3px;padding:3px;border-radius:99px;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.28)}
+.seg button{padding:4px 10px;border-radius:99px;font-size:12px;font-weight:500}
+.seg button.on{background:linear-gradient(135deg,#ffd23f,#ff9f43);color:var(--ink);font-weight:700}
+.card{position:absolute;z-index:8;left:16px;bottom:84px;width:min(390px,calc(100% - 32px));max-height:calc(100% - 190px);overflow:auto;border-radius:26px;background:rgba(255,255,255,.97);color:var(--ink);border:4px solid var(--c,#ffd23f);box-shadow:0 20px 50px rgba(0,0,0,.45),0 0 0 6px rgba(255,255,255,.12);opacity:0;transform:translateY(26px) scale(.86);pointer-events:none;transition:opacity .25s,transform .45s cubic-bezier(.34,1.56,.64,1)}
+.card.show{opacity:1;transform:none;pointer-events:auto}
+.card-head{display:flex;align-items:center;gap:12px;padding:14px 14px 10px;background:linear-gradient(135deg,color-mix(in srgb,var(--c) 28%,#fff),#fff)}
+.card-emoji{flex:none;width:52px;height:52px;border-radius:18px;display:grid;place-items:center;font-size:30px;background:var(--c);box-shadow:0 5px 0 rgba(0,0,0,.15);animation:wob 2.4s ease-in-out infinite}
+@keyframes wob{0%,100%{transform:rotate(-6deg)}50%{transform:rotate(6deg) scale(1.06)}}
+.card-ttl{flex:1;min-width:0}
+.card-kicker{font-size:11px;font-weight:600;color:#7a6aa8;letter-spacing:.5px}
+.card h3{font-family:'Mali','Prompt',sans-serif;font-size:17px;line-height:1.25}
+.card-x{flex:none;width:32px;height:32px;border-radius:50%;background:#f0ecff;color:var(--ink);font-size:14px;font-weight:700;transition:transform .2s,background .2s}
+.card-x:hover{background:#ffd6e9;transform:rotate(90deg)}
+.card-body{padding:6px 16px 16px;font-size:13.5px;line-height:1.6;animation:swap .45s ease both}
+.card-body p{margin-top:8px}
+@keyframes swap{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:none}}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:10px}
+.stat{padding:7px 10px;border-radius:14px;background:#f4f0ff;border:2px solid #e3dbff}
+.stat small{display:block;font-size:10.5px;color:#7a6aa8}
+.stat b{font-size:13px}
+.fact{margin-top:11px;padding:9px 12px;border-radius:16px;background:#fff6cf;border:2px dashed #ffcf4a;font-size:12.5px}
+.card-act{margin-top:12px;width:100%;padding:10px;border-radius:16px;font-weight:700;font-size:13.5px;color:#fff;background:linear-gradient(135deg,#ff6fb5,#ff9f43);box-shadow:0 5px 0 rgba(0,0,0,.18);transition:transform .15s}
+.card-act:hover{transform:translateY(-2px)}
+.card-act:active{transform:translateY(2px);box-shadow:0 2px 0 rgba(0,0,0,.18)}
+#loading{position:absolute;inset:0;z-index:20;display:grid;place-items:center;background:linear-gradient(160deg,#241562,#3a1f8f);transition:opacity .6s}
+#loading.done{opacity:0;pointer-events:none}
+.load-box{text-align:center;font-family:'Mali','Prompt',sans-serif;font-size:16px;padding:20px}
+.spinner{width:64px;height:64px;margin:0 auto 14px;border-radius:50%;background:radial-gradient(circle at 35% 35%,#fff3a0,#ffb020);animation:bob 1s ease-in-out infinite alternate;box-shadow:0 0 30px #ffb020}
+@keyframes bob{from{transform:translateY(-8px) scale(.95)}to{transform:translateY(8px) scale(1.05)}}
+.panel{display:flex;flex-direction:column;margin:14px;border-radius:30px;overflow:hidden;background:var(--glass);border:3px solid var(--glass-b);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);box-shadow:0 18px 50px rgba(8,4,40,.45)}
+.p-head{padding:16px 18px 10px}
+.p-head h1{font-family:'Mali','Prompt',sans-serif;font-size:19px;line-height:1.25;background:linear-gradient(90deg,#ffe066,#ff9ad5,#7ef0ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.p-head p{font-size:11.5px;color:#d8ceff;margin-top:3px}
+.goal{margin:10px 0 0;padding:9px 12px;border-radius:16px;font-size:12px;line-height:1.55;background:rgba(255,210,63,.14);border:2px dashed rgba(255,210,63,.6)}
+.goal b{color:var(--yellow)}
+.tabs{display:flex;gap:6px;padding:4px 14px 10px}
+.tabs button{flex:1;padding:9px 6px;border-radius:16px;font-size:13px;font-weight:600;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);transition:all .2s}
+.tabs button:hover{background:rgba(255,255,255,.2)}
+.tabs button.on{background:linear-gradient(135deg,#ff6fb5,#a78bfa);border-color:#fff;box-shadow:0 5px 16px rgba(167,139,250,.55);transform:translateY(-1px)}
+.scroll{flex:1;overflow-y:auto;padding:2px 14px 18px}
+.scroll::-webkit-scrollbar{width:8px}
+.scroll::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3);border-radius:8px}
+.pane{display:none}
+.pane.on{display:block;animation:paneIn .45s cubic-bezier(.34,1.3,.64,1) both}
+@keyframes paneIn{0%{opacity:0;transform:translateX(24px)}100%{opacity:1;transform:none}}
+.sec{font-family:'Mali','Prompt',sans-serif;font-size:14px;font-weight:700;margin:14px 0 8px;display:flex;align-items:center;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:flex;align-items:center;gap:6px;padding:6px 12px 6px 7px;border-radius:99px;font-size:12.5px;font-weight:500;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.25);transition:transform .15s,background .2s}
+.chip i{width:20px;height:20px;border-radius:50%;background:var(--c);border:2px solid #fff;display:block}
+.chip:hover{transform:translateY(-2px);background:rgba(255,255,255,.2)}
+.chip.on{background:#fff;color:var(--ink);font-weight:700;border-color:var(--c);box-shadow:0 4px 14px rgba(0,0,0,.25)}
+.who{display:inline-flex;align-items:center;gap:6px;margin-top:9px;padding:5px 12px;border-radius:99px;font-size:12px;background:rgba(93,242,176,.18);border:2px solid rgba(93,242,176,.55)}
+.ctl{padding:12px 13px;border-radius:20px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);margin-bottom:9px}
+.ctl-top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:9px;font-size:12.5px;font-weight:600}
+.ctl-top label{display:flex;align-items:center;gap:6px}
+.val{padding:2px 10px;border-radius:99px;background:#fff;color:var(--ink);font-family:ui-monospace,Menlo,monospace;font-size:12px;font-weight:700}
+.info{flex:none;width:22px;height:22px;border-radius:50%;background:var(--yellow);color:var(--ink);font-weight:800;font-size:12px;display:grid;place-items:center;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(255,210,63,.7)}50%{box-shadow:0 0 0 7px rgba(255,210,63,0)}}
+.ticks{display:flex;justify-content:space-between;font-size:10px;color:#cfc4ff;margin-top:5px}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:12px;border-radius:99px;outline:none;border:2px solid rgba(255,255,255,.65);background:linear-gradient(90deg,var(--c1),var(--c2))}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:26px;height:26px;border-radius:50%;background:#fff;border:5px solid var(--c1);box-shadow:0 3px 9px rgba(0,0,0,.4);cursor:pointer;transition:transform .15s}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.15)}
+input[type=range]::-moz-range-thumb{width:18px;height:18px;border-radius:50%;background:#fff;border:5px solid var(--c1);box-shadow:0 3px 9px rgba(0,0,0,.4);cursor:pointer}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.met{position:relative;text-align:left;padding:10px 12px;border-radius:20px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);transition:transform .15s,background .2s;overflow:hidden}
+.met::before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--c)}
+.met:hover{transform:translateY(-3px);background:rgba(255,255,255,.2)}
+.met small{display:block;font-size:11px;color:#d8ceff;padding-left:4px}
+.met b{display:block;font-family:ui-monospace,Menlo,monospace;font-size:17px;color:var(--c);padding-left:4px;margin-top:2px}
+.met b em{font-style:normal;font-size:11px;color:#fff;font-weight:400;font-family:'Prompt',sans-serif}
+.chart-wrap{position:relative;height:215px;padding:8px;border-radius:20px;background:rgba(10,5,45,.45);border:2px solid rgba(255,255,255,.22)}
+.tip{margin-top:9px;padding:9px 12px;border-radius:16px;font-size:12px;line-height:1.55;background:rgba(255,210,63,.14);border:2px dashed rgba(255,210,63,.6)}
+.tiles{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tile{padding:11px 4px;border-radius:20px;text-align:center;font-size:12px;font-weight:500;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);transition:transform .2s cubic-bezier(.34,1.56,.64,1),background .2s}
+.tile span{display:block;font-size:26px;margin-bottom:2px}
+.tile:hover{transform:translateY(-4px) rotate(-2deg);background:rgba(255,255,255,.22);border-color:#fff}
+.laws{display:flex;flex-direction:column;gap:8px}
+.law{padding:11px 13px;border-radius:18px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22);font-size:12.5px;line-height:1.55}
+.law b{display:block;font-size:13px;color:var(--c);margin-bottom:2px}
+.score{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-radius:20px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22)}
+.score b{font-family:ui-monospace,Menlo,monospace;font-size:24px;color:var(--yellow)}
+.bar{height:10px;border-radius:99px;background:rgba(255,255,255,.15);overflow:hidden;margin-top:8px}
+.bar div{height:100%;width:0;border-radius:99px;background:linear-gradient(90deg,#5df2b0,#ffd23f,#ff6fb5);transition:width .6s cubic-bezier(.34,1.56,.64,1)}
+.q{margin-top:10px;padding:13px;border-radius:20px;background:rgba(255,255,255,.1);border:2px solid rgba(255,255,255,.22)}
+.q p{font-size:13px;font-weight:500;line-height:1.55}
+.opts{display:grid;gap:6px;margin-top:9px}
+.opt{text-align:left;padding:9px 12px;border-radius:14px;font-size:12.5px;line-height:1.45;background:rgba(255,255,255,.12);border:2px solid rgba(255,255,255,.25);transition:transform .15s,background .2s}
+.opt:hover:not(:disabled){transform:translateX(4px);background:rgba(255,255,255,.24)}
+.opt.ok{background:rgba(93,242,176,.35);border-color:#5df2b0;font-weight:600}
+.opt.bad{background:rgba(255,111,181,.35);border-color:#ff6fb5;animation:shake .4s}
+.opt:disabled{cursor:default}
+@keyframes shake{0%,100%{transform:none}25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.fb{display:none;margin-top:9px;padding:9px 12px;border-radius:14px;font-size:12px;line-height:1.55}
+.fb.show{display:block;animation:swap .4s both}
+.fb.ok{background:rgba(93,242,176,.2);border:2px solid rgba(93,242,176,.6)}
+.fb.bad{background:rgba(255,111,181,.2);border:2px solid rgba(255,111,181,.6)}
+.done{display:none;margin-top:12px;padding:14px;border-radius:20px;text-align:center;font-family:'Mali','Prompt',sans-serif;background:linear-gradient(135deg,rgba(255,210,63,.3),rgba(255,111,181,.3));border:2px solid #fff}
+.done.show{display:block;animation:swap .5s both}
+.again{margin-top:10px;width:100%;padding:10px;border-radius:16px;font-weight:600;font-size:13px;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.35)}
+.again:hover{background:rgba(255,255,255,.26)}
+@media (max-width:1100px){.app{grid-template-columns:minmax(0,1fr) 340px}.hud-tl{max-width:calc(100% - 170px)}.vbtn span.t{display:none}}
+@media (max-width:820px){body{overflow:auto}.app{display:block;height:auto}.stage{margin:10px;height:64vh;min-height:430px}.panel{margin:10px;height:auto}.scroll{overflow:visible}.card{bottom:92px;max-height:46%}.hud-tl{max-width:calc(100% - 70px)}.logo small{display:none}.hint{display:none}.vbtn span.t{display:none}}
+</style>
+</head>
+<body>
+<div class="app">
+  <section class="stage" id="stage">
+    <div id="webgl"></div>
+    <div id="labels"></div>
+    <div class="hud hud-tl">
+      <div class="logo"><div class="ic">🪐</div><div><b>จักรวาลจิบิ 3D</b><small>ระบบสุริยะและการโคจร • วิทยาศาสตร์ ม.3</small></div></div>
+      <div class="live"><span>⏱️ เวลาจำลอง <i id="hudTime">0.00</i> ปีโลก</span><span>🔁 โคจรแล้ว <i id="hudLaps">0.00</i> รอบ</span></div>
+      <div class="live"><span>➡️ <i style="color:#3ee6ff">ฟ้า</i> = ความเร็ว</span><span>⬅️ <i style="color:#ff6fb5">ชมพู</i> = แรงดึงดูด</span></div>
+      <div class="hint">ลากเพื่อหมุน • เลื่อนล้อเพื่อซูม • คลิกดาวเพื่อเรียนรู้</div>
+    </div>
+    <div class="hud hud-tr">
+      <button class="vbtn on" data-view="overview">🌌 <span class="t">ภาพรวม</span></button>
+      <button class="vbtn" data-view="top">⬆️ <span class="t">มองจากด้านบน</span></button>
+      <button class="vbtn" data-view="side">👀 <span class="t">มองจากด้านข้าง</span></button>
+      <button class="vbtn" data-view="follow">🎯 <span class="t">ติดตามดาว</span></button>
+    </div>
+    <div class="dock">
+      <button class="dbtn" id="bPause">⏸️ หยุด</button>
+      <div class="seg" id="speedSeg">
+        <button data-s="0.5">0.5×</button>
+        <button data-s="1" class="on">1×</button>
+        <button data-s="3">3×</button>
+        <button data-s="10">10×</button>
+      </div>
+      <button class="dbtn on" id="bVec">🧭 ลูกศร</button>
+      <button class="dbtn on" id="bOthers">🪐 ดาวอื่น</button>
+      <button class="dbtn on" id="bLabels">🏷️ ป้าย</button>
+      <button class="dbtn" id="bRot">🔄 หมุนกล้อง</button>
+      <button class="dbtn" id="bReset">⏪ เริ่มใหม่</button>
+    </div>
+    <div class="card" id="card"></div>
+    <div id="loading"><div class="load-box"><div class="spinner"></div>กำลังเตรียมจักรวาลจิบิ...</div></div>
+  </section>
+
+  <aside class="panel">
+    <div class="p-head">
+      <h1>ระบบสุริยะและการโคจรของดาวเคราะห์</h1>
+      <p>หน่วยการเรียนรู้เรื่องการเคลื่อนที่และแรงในอวกาศ</p>
+      <div class="goal"><b>🎯 วัตถุประสงค์:</b> ทดลองปรับ <b>ระยะห่างจากดวงอาทิตย์</b> และ <b>มวลของดาวเคราะห์</b> แล้วสังเกตผลต่อความเร็ว คาบการโคจร แรงดึงดูด และอุณหภูมิ ตามกฎของเคปเลอร์และแรงโน้มถ่วง</div>
+    </div>
+    <div class="tabs" id="tabs">
+      <button class="on" data-tab="lab">🧪 ทดลอง</button>
+      <button data-tab="learn">💡 เรียนรู้</button>
+      <button data-tab="quiz">🏆 ควิซ</button>
+    </div>
+    <div class="scroll">
+      <div class="pane on" id="pane-lab">
+        <div class="sec">🪐 เลือกดาวเคราะห์</div>
+        <div class="chips" id="chips"></div>
+        <div class="who" id="who">⭐ กำลังทดลองกับ: โลก</div>
+        <div class="sec">🎛️ ปรับตัวแปรการทดลอง</div>
+        <div class="ctl" style="--c1:#ffb020;--c2:#ff6fb5">
+          <div class="ctl-top"><label for="sA">↔️ ตัวแปร 1: ระยะห่างจากดวงอาทิตย์ <button class="info" data-topic="distance" aria-label="อธิบายระยะห่าง">i</button></label><span class="val" id="vA">1.00 AU</span></div>
+          <input type="range" id="sA" min="0.2" max="10" step="0.01" value="1">
+          <div class="ticks"><span>0.2 AU ใกล้</span><span>1 AU โลก</span><span>10 AU ไกล</span></div>
+        </div>
+        <div class="ctl" style="--c1:#3ee6ff;--c2:#a78bfa">
+          <div class="ctl-top"><label for="sM">⚖️ ตัวแปร 2: มวลของดาวเคราะห์ <button class="info" data-topic="mass" aria-label="อธิบายมวล">i</button></label><span class="val" id="vM">1.00 M⊕</span></div>
+          <input type="range" id="sM" min="0.05" max="350" step="0.05" value="1">
+          <div class="ticks"><span>0.05 M⊕ เล็ก</span><span>1 M⊕ โลก</span><span>350 M⊕ ใหญ่</span></div>
+        </div>
+        <div class="ctl" style="--c1:#5df2b0;--c2:#3ee6ff">
+          <div class="ctl-top"><label for="sE">🥚 ความรีของวงโคจร (e) <button class="info" data-topic="ecc" aria-label="อธิบายความรี">i</button></label><span class="val" id="vE">0.02</span></div>
+          <input type="range" id="sE" min="0" max="0.6" step="0.01" value="0.017">
+          <div class="ticks"><span>0 วงกลม</span><span>0.3</span><span>0.6 รีมาก</span></div>
+        </div>
+        <div class="sec">📊 ผลที่สังเกตได้ <small style="font-weight:400;font-size:11px;color:#d8ceff">(แตะการ์ดเพื่อเรียนรู้)</small></div>
+        <div class="metrics" id="metrics"></div>
+        <div class="sec">📈 กฎข้อที่ 3 ของเคปเลอร์ (T² = a³)</div>
+        <div class="chart-wrap"><canvas id="chart"></canvas></div>
+        <div class="tip">🌟 <b>เกร็ดความรู้:</b> ยิ่งดาวเคราะห์อยู่ไกลจากดวงอาทิตย์ (a เพิ่มขึ้น) คาบการโคจร (T) ยิ่งยาวนานขึ้นตามความสัมพันธ์ T² ∝ a³ ลองเลื่อนแถบระยะห่างแล้วดูดาวสีชมพูบนกราฟเคลื่อนที่ตามเส้นโค้ง</div>
+      </div>
+
+      <div class="pane" id="pane-learn">
+        <div class="sec">👆 แตะเพื่อเปิดการ์ดความรู้</div>
+        <div class="tiles" id="tiles"></div>
+        <div class="sec">📖 สรุปหลักการทางวิทยาศาสตร์</div>
+        <div class="laws">
+          <div class="law" style="--c:#ffd23f"><b>1. กฎแรงดึงดูดระหว่างมวลของนิวตัน</b>แรงดึงดูดระหว่างดวงอาทิตย์กับดาวเคราะห์แปรผันตรงกับผลคูณของมวล และแปรผกผันกับกำลังสองของระยะห่าง (F ∝ m / r²)</div>
+          <div class="law" style="--c:#3ee6ff"><b>2. ความเร็วในวงโคจร</b>ดาวเคราะห์ที่อยู่ใกล้ดวงอาทิตย์ต้องเคลื่อนที่เร็วกว่าดาวที่อยู่ไกล เพื่อไม่ให้ถูกแรงดึงดูดดึงตกลงไป (v ∝ 1/√r)</div>
+          <div class="law" style="--c:#ff9ad5"><b>3. กฎข้อที่ 3 ของเคปเลอร์</b>กำลังสองของคาบการโคจร (T²) เทียบกับกำลังสามของระยะห่างเฉลี่ย (a³) มีค่าคงที่เสมอสำหรับดาวเคราะห์ที่โคจรรอบดาวแม่ดวงเดียวกัน</div>
+        </div>
+      </div>
+
+      <div class="pane" id="pane-quiz">
+        <div class="sec">🏆 การประเมินความรู้ท้ายกิจกรรม</div>
+        <div class="score"><div><div style="font-size:12px;color:#d8ceff">ทดสอบความเข้าใจ 3 ข้อ จากการทดลองในฉาก 3 มิติ</div><div class="bar"><div id="qBar"></div></div></div><div style="text-align:right"><small style="font-size:11px;color:#d8ceff">คะแนน</small><br><b id="qScore">0 / 3</b></div></div>
+        <div id="quiz"></div>
+        <div class="done" id="qDone">🎉 สุดยอดนักสำรวจอวกาศ! คุณตอบถูกครบทุกข้อแล้ว</div>
+        <button class="again" id="qAgain">🔁 ทำแบบทดสอบใหม่</button>
+      </div>
+    </div>
+  </aside>
+</div>
+
+<script>
+(function(){
+if(typeof THREE==='undefined'||typeof THREE.OrbitControls==='undefined'){
+  document.getElementById('loading').innerHTML='<div class="load-box">โหลดไลบรารี 3D ไม่สำเร็จ<br>กรุณาตรวจสอบอินเทอร์เน็ตแล้วรีเฟรชหน้าเว็บอีกครั้ง</div>';
+  return;
+}
+
+const TAU=Math.PI*2;
+const AU_SEC=10;
+const V=THREE.Vector3;
+const ZERO=new V(0,0,0);
+const UP=new V(0,1,0);
+const $=function(id){return document.getElementById(id);};
+
+function vis(r){return 2.6+3.2*Math.pow(r,0.62);}
+function radOf(m){return 0.34+0.18*Math.pow(m,0.28);}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+function ease(k){return k<0.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;}
+function rng(seed){let s=seed>>>0;return function(){s=(s+0x6D2B79F5)>>>0;let t=s;t=Math.imul(t^(t>>>15),t|1);t^=t+Math.imul(t^(t>>>7),t|61);return((t^(t>>>14))>>>0)/4294967296;};}
+
+const presets={
+  mercury:{name:'ดาวพุธ',emoji:'🌑',a:0.39,mass:0.055,e:0.205,color:'#b9b3c9',style:'mercury',ring:false},
+  venus:{name:'ดาวศุกร์',emoji:'🌕',a:0.72,mass:0.815,e:0.007,color:'#ffd36e',style:'venus',ring:false},
+  earth:{name:'โลก',emoji:'🌍',a:1,mass:1,e:0.017,color:'#47b8ff',style:'earth',ring:false},
+  mars:{name:'ดาวอังคาร',emoji:'🔴',a:1.52,mass:0.107,e:0.094,color:'#ff7b6b',style:'mars',ring:false},
+  jupiter:{name:'ดาวพฤหัสบดี',emoji:'🟠',a:5.2,mass:317.8,e:0.049,color:'#ffa05a',style:'jupiter',ring:false},
+  saturn:{name:'ดาวเสาร์',emoji:'🪐',a:9.58,mass:95.2,e:0.057,color:'#ffe58a',style:'saturn',ring:true},
+  custom:{name:'ดาวเคราะห์กำหนดเอง',emoji:'✨',a:2,mass:10,e:0.05,color:'#c084fc',style:'custom',ring:false}
+};
+const refKeys=['mercury','venus','earth','mars','jupiter','saturn'];
+const refPhase={mercury:0.12,venus:0.47,earth:0,mars:0.72,jupiter:0.3,saturn:0.86};
+
+const topics={
+  sun:{emoji:'☀️',title:'ดวงอาทิตย์ พี่ใหญ่ใจดีของระบบสุริยะ',color:'#ffb020',
+    text:['ดวงอาทิตย์เป็นดาวฤกษ์ที่ผลิตแสงและความร้อนเองจากปฏิกิริยาฟิวชันนิวเคลียร์ มีมวลประมาณ 99.8% ของมวลทั้งหมดในระบบสุริยะ','แรงโน้มถ่วงมหาศาลของดวงอาทิตย์คือสิ่งที่ดึงให้ดาวเคราะห์ทุกดวงโคจรอยู่รอบ ๆ ไม่ให้หลุดไปในอวกาศ'],
+    stats:[['ชนิด','ดาวฤกษ์'],['อุณหภูมิผิว','≈ 5,500 °C'],['แกนกลาง','≈ 15 ล้าน °C'],['แสงถึงโลก','≈ 8.3 นาที']],
+    fact:'ดวงอาทิตย์ในฉากนี้ถูกวาดให้ตัวเล็กและน่ารักเพื่อให้ดูง่าย ของจริงใหญ่กว่าโลกประมาณ 109 เท่า'},
+  mercury:{emoji:'🌑',title:'ดาวพุธ นักวิ่งตัวจิ๋วสุดเร็ว',color:'#b9b3c9',
+    text:['ดาวพุธอยู่ใกล้ดวงอาทิตย์ที่สุด แรงดึงดูดจึงแรงมาก ดาวพุธต้องวิ่งเร็วที่สุดในบรรดาดาวเคราะห์เพื่อไม่ให้ตกลงไปในดวงอาทิตย์','วงโคจรของดาวพุธรีมากที่สุด (e ≈ 0.21) จึงเห็นการเปลี่ยนความเร็วระหว่างจุดใกล้และไกลดวงอาทิตย์ได้ชัด'],
+    stats:[['ระยะห่าง','0.39 AU'],['คาบโคจร','88 วัน'],['ความเร็วเฉลี่ย','≈ 47 km/s'],['อุณหภูมิ','−180 ถึง 430 °C']],
+    fact:'ดาวพุธไม่มีบรรยากาศหนาพอเก็บความร้อน กลางวันจึงร้อนจัดและกลางคืนหนาวจัด',
+    action:{label:'🎯 ทดลองกับดาวพุธ (ค่าจริง)',key:'mercury'}},
+  venus:{emoji:'🌕',title:'ดาวศุกร์ ดาวที่ร้อนที่สุด',color:'#ffd36e',
+    text:['ดาวศุกร์มีบรรยากาศคาร์บอนไดออกไซด์หนาแน่น เกิดภาวะเรือนกระจกรุนแรงจนร้อนกว่าดาวพุธ ทั้งที่อยู่ไกลดวงอาทิตย์กว่า','ดาวศุกร์หมุนรอบตัวเองช้ามากและหมุนย้อนทิศ วัน 1 วันของดาวศุกร์จึงยาวกว่า 1 ปีของมัน'],
+    stats:[['ระยะห่าง','0.72 AU'],['คาบโคจร','225 วัน'],['ความเร็วเฉลี่ย','≈ 35 km/s'],['อุณหภูมิผิว','≈ 465 °C']],
+    fact:'ในแบบจำลองนี้อุณหภูมิของดาวศุกร์จะต่ำกว่าความจริง เพราะแบบจำลองไม่คิดผลของบรรยากาศ',
+    action:{label:'🎯 ทดลองกับดาวศุกร์ (ค่าจริง)',key:'venus'}},
+  earth:{emoji:'🌍',title:'โลก บ้านสีฟ้าของเรา',color:'#47b8ff',
+    text:['โลกอยู่ห่างจากดวงอาทิตย์ 1 AU ซึ่งเป็นระยะที่พอดีให้น้ำคงอยู่เป็นของเหลวบนผิวดาวได้','วงโคจรของโลกเกือบเป็นวงกลม (e ≈ 0.017) จึงเป็นดาวคู่เปรียบเทียบที่ดีสำหรับการทดลอง'],
+    stats:[['ระยะห่าง','1 AU ≈ 150 ล้าน กม.'],['คาบโคจร','365.25 วัน'],['ความเร็วเฉลี่ย','≈ 29.8 km/s'],['อุณหภูมิเฉลี่ย','≈ 15 °C']],
+    fact:'ถ้าลองปรับระยะห่างจากโลกให้ใกล้ดวงอาทิตย์ขึ้นหรือไกลออกไป อุณหภูมิประมาณการจะเปลี่ยนทันที',
+    action:{label:'🎯 ทดลองกับโลก (ค่าจริง)',key:'earth'}},
+  mars:{emoji:'🔴',title:'ดาวอังคาร ดาวแดงนักผจญภัย',color:'#ff7b6b',
+    text:['ดาวอังคารมีสีแดงเพราะพื้นผิวเต็มไปด้วยฝุ่นเหล็กออกไซด์ หรือสนิมเหล็กนั่นเอง','บนดาวอังคารมีภูเขาไฟโอลิมปัสมอนส์ ซึ่งสูงประมาณ 22 กิโลเมตร สูงที่สุดในระบบสุริยะ'],
+    stats:[['ระยะห่าง','1.52 AU'],['คาบโคจร','687 วัน'],['ความเร็วเฉลี่ย','≈ 24 km/s'],['อุณหภูมิเฉลี่ย','≈ −63 °C']],
+    fact:'1 ปีบนดาวอังคารยาวเกือบ 2 ปีโลก เพราะอยู่ไกลดวงอาทิตย์กว่า วงโคจรจึงยาวกว่าและเดินทางช้ากว่า',
+    action:{label:'🎯 ทดลองกับดาวอังคาร (ค่าจริง)',key:'mars'}},
+  jupiter:{emoji:'🟠',title:'ดาวพฤหัสบดี ยักษ์ใหญ่ใจดี',color:'#ffa05a',
+    text:['ดาวพฤหัสบดีเป็นดาวเคราะห์ที่ใหญ่ที่สุด มวลมากกว่าโลกประมาณ 318 เท่า และเป็นดาวแก๊สที่ไม่มีพื้นผิวแข็ง','จุดแดงใหญ่คือพายุขนาดมหึมาที่หมุนวนมานานหลายร้อยปี'],
+    stats:[['ระยะห่าง','5.2 AU'],['คาบโคจร','≈ 11.9 ปี'],['ความเร็วเฉลี่ย','≈ 13 km/s'],['อุณหภูมิยอดเมฆ','≈ −110 °C']],
+    fact:'แม้มวลมากกว่าโลกถึง 318 เท่า ดาวพฤหัสบดีก็ยังโคจรด้วยคาบที่ขึ้นกับระยะห่างเท่านั้น ไม่ใช่มวล',
+    action:{label:'🎯 ทดลองกับดาวพฤหัสฯ (ค่าจริง)',key:'jupiter'}},
+  saturn:{emoji:'🪐',title:'ดาวเสาร์ เจ้าของวงแหวนสุดสวย',color:'#ffe58a',
+    text:['ดาวเสาร์มีวงแหวนที่ประกอบด้วยก้อนน้ำแข็งและหินจำนวนมหาศาลที่โคจรรอบดาว','ดาวเสาร์มีความหนาแน่นเฉลี่ยต่ำกว่าน้ำ ถ้ามีอ่างน้ำใหญ่พอ ดาวเสาร์จะลอยน้ำได้'],
+    stats:[['ระยะห่าง','9.58 AU'],['คาบโคจร','≈ 29.5 ปี'],['ความเร็วเฉลี่ย','≈ 9.7 km/s'],['อุณหภูมิ','≈ −140 °C']],
+    fact:'ดาวเสาร์ใช้เวลาเกือบ 30 ปีโลกจึงจะโคจรครบ 1 รอบ ลองกดเล่นเร็ว 10 เท่าเพื่อดู',
+    action:{label:'🎯 ทดลองกับดาวเสาร์ (ค่าจริง)',key:'saturn'}},
+  custom:{emoji:'✨',title:'ดาวเคราะห์ของฉัน',color:'#c084fc',
+    text:['นี่คือดาวเคราะห์สมมติที่นักเรียนกำหนดเอง ลองปรับระยะห่าง มวล และความรีของวงโคจร แล้วสังเกตว่าอะไรเปลี่ยนและอะไรไม่เปลี่ยน','ลองตั้งคำถาม: ถ้าเพิ่มมวลเป็น 100 เท่า คาบการโคจรเปลี่ยนไหม'],
+    fact:'วิทยาศาสตร์ที่ดีเริ่มจากการเปลี่ยนตัวแปรทีละตัว แล้วสังเกตผลลัพธ์'},
+  distance:{emoji:'↔️',kicker:'แนวคิดสำคัญ',title:'ระยะห่างจากดวงอาทิตย์ (a)',color:'#ffb020',
+    text:['1 AU (หน่วยดาราศาสตร์) คือระยะเฉลี่ยจากโลกถึงดวงอาทิตย์ ประมาณ 150 ล้านกิโลเมตร','ยิ่งห่างจากดวงอาทิตย์มาก แรงดึงดูดยิ่งอ่อน ดาวเคราะห์จึงโคจรช้าลง วงโคจรก็ยาวขึ้น คาบการโคจรจึงเพิ่มขึ้นตามสูตร T² = a³'],
+    fact:'ในฉาก 3 มิติ ระยะทางถูกย่อให้ดูง่าย ไม่ใช่มาตราส่วนจริง แต่ตัวเลขที่แสดงทางขวาเป็นค่าจริงตามสูตร',
+    demo:{label:'🎯 ลองตั้งระยะห่าง 4 AU (T จะเป็น 8 ปี)',vals:{a:4}}},
+  mass:{emoji:'⚖️',kicker:'แนวคิดสำคัญ',title:'มวลของดาวเคราะห์',color:'#3ee6ff',
+    text:['ถ้าดาวเคราะห์มีมวลมากขึ้น แรงดึงดูดระหว่างดวงอาทิตย์กับดาวเคราะห์ก็มากขึ้นตาม แต่ดาวที่หนักก็เปลี่ยนความเร็วยากขึ้นด้วย (ความเฉื่อย) สองผลนี้หักล้างกันพอดี','ผลคือ ความเร็วและคาบการโคจรแทบไม่ขึ้นกับมวลของดาวเคราะห์ เพราะดวงอาทิตย์มีมวลมากกว่าหลายพันเท่า'],
+    fact:'ลองเลื่อนแถบมวลจากน้อยสุดไปมากสุด ตัวเลขแรงดึงดูดเปลี่ยน แต่คาบการโคจรไม่เปลี่ยนเลย',
+    demo:{label:'🎯 ลองเพิ่มมวลเป็น 300 เท่าของโลก',vals:{mass:300}}},
+  ecc:{emoji:'🥚',kicker:'แนวคิดสำคัญ',title:'ความรีของวงโคจร (e)',color:'#5df2b0',
+    text:['ถ้า e = 0 วงโคจรเป็นวงกลมสมบูรณ์ ยิ่ง e มากวงโคจรยิ่งรีและยาว ดวงอาทิตย์อยู่ที่จุดโฟกัสจุดหนึ่งของวงรี ไม่ได้อยู่ตรงกลาง','ตอนใกล้ดวงอาทิตย์ที่สุดดาวจะเร็วที่สุด และตอนไกลที่สุดดาวจะช้าที่สุด ตามกฎข้อที่ 2 ของเคปเลอร์'],
+    fact:'วงโคจรของโลกเกือบกลม (e ≈ 0.017) แต่ดาวพุธรีกว่ามาก (e ≈ 0.21)',
+    demo:{label:'🎯 ลองตั้งความรี e = 0.55',vals:{e:0.55}}},
+  speed:{emoji:'🚀',kicker:'ผลที่สังเกตได้',title:'ความเร็วในวงโคจร',color:'#3ee6ff',
+    text:['ความเร็วในวงโคจรแปรผกผันกับรากที่สองของระยะห่าง (v ∝ 1/√r) ดาวที่อยู่ใกล้ดวงอาทิตย์จึงต้องเร็ว','ลูกศรสีฟ้าบนดาวแสดงทิศการเคลื่อนที่ และยาวขึ้นเมื่อความเร็วมากขึ้น'],
+    fact:'ความเร็วที่แสดงเป็นค่าขณะนั้น คำนวณจากระยะห่างจริงที่เปลี่ยนไปตามวงรี',
+    demo:{label:'🎯 ลองให้ดาวอยู่ใกล้ที่ 0.4 AU',vals:{a:0.4}}},
+  force:{emoji:'🧲',kicker:'ผลที่สังเกตได้',title:'แรงดึงดูดจากดวงอาทิตย์',color:'#ff6fb5',
+    text:['แรงดึงดูดแปรผันตรงกับมวลและแปรผกผันกับกำลังสองของระยะห่าง (F ∝ m / r²) ถ้าไกลขึ้น 2 เท่า แรงจะเหลือเพียง 1 ใน 4','ลูกศรสีชมพูชี้เข้าหาดวงอาทิตย์เสมอ ความยาวของลูกศรบอกความแรงของแรง'],
+    fact:'ค่าที่แสดงเทียบกับแรงที่กระทำต่อโลก ณ ระยะ 1 AU (โลก = 1.00)',
+    demo:{label:'🎯 ลองดึงดาวเข้าใกล้ที่ 0.5 AU',vals:{a:0.5}}},
+  temp:{emoji:'🌡️',kicker:'ผลที่สังเกตได้',title:'อุณหภูมิประมาณการ',color:'#ffb020',
+    text:['ยิ่งอยู่ใกล้ดวงอาทิตย์ ยิ่งได้รับพลังงานแสงมาก จึงอุ่นขึ้น แบบจำลองนี้ประมาณอุณหภูมิจากระยะห่างเท่านั้น','อุณหภูมิจริงยังขึ้นกับบรรยากาศ เช่น ดาวศุกร์ร้อนกว่าที่แบบจำลองคำนวณมาก เพราะภาวะเรือนกระจก'],
+    fact:'แบบจำลองกำหนดให้โลกที่ 1 AU มีอุณหภูมิเฉลี่ยประมาณ 15 °C',
+    demo:{label:'🎯 ลองย้ายดาวไปไกลที่ 5 AU',vals:{a:5}}},
+  period:{emoji:'⏳',kicker:'ผลที่สังเกตได้',title:'คาบการโคจร (T)',color:'#a78bfa',
+    text:['คาบการโคจรคือเวลาที่ใช้โคจรครบ 1 รอบ ตามกฎข้อที่ 3 ของเคปเลอร์ T² = a³ เมื่อ T มีหน่วยเป็นปีโลก และ a มีหน่วยเป็น AU','ถ้าระยะห่างเพิ่มเป็น 2 เท่า T² จะเป็น 8 เท่า ดังนั้น T ≈ 2.83 เท่า มากกว่า 2 เท่า'],
+    fact:'ดาวพุธครบรอบใน 88 วัน แต่ดาวเสาร์ต้องใช้เกือบ 30 ปี',
+    demo:{label:'🎯 ลองเพิ่มระยะห่างเป็น 2 AU',vals:{a:2}}},
+  laps:{emoji:'🔁',kicker:'ผลที่สังเกตได้',title:'จำนวนรอบที่โคจรแล้ว',color:'#5df2b0',
+    text:['ตัวเลขนี้นับว่าดาวเคราะห์ของเราโคจรไปแล้วกี่รอบ ตั้งแต่เริ่มต้นหรือกดเริ่มใหม่','ลองเทียบว่าโลกครบ 1 รอบใช้เวลา 1 ปีจำลอง ขณะที่ดาวไกลกว่าใช้เวลานานกว่ามาก'],
+    fact:'ใช้ปุ่มความเร็ว 10× เพื่อดูดาวที่คาบยาว ๆ ได้เร็วขึ้น'}
+};
+
+const tileList=[['sun','☀️','ดวงอาทิตย์'],['mercury','🌑','ดาวพุธ'],['venus','🌕','ดาวศุกร์'],['earth','🌍','โลก'],['mars','🔴','ดาวอังคาร'],['jupiter','🟠','ดาวพฤหัสฯ'],['saturn','🪐','ดาวเสาร์'],['distance','↔️','ระยะห่าง'],['mass','⚖️','มวล'],['ecc','🥚','ความรี'],['speed','🚀','ความเร็ว'],['force','🧲','แรงดึงดูด'],['temp','🌡️','อุณหภูมิ'],['period','⏳','คาบ T']];
+
+const quizData=[
+  {q:'1. หากทดลองขยับดาวเคราะห์ให้มีระยะห่างจากดวงอาทิตย์เพิ่มขึ้นเป็น 2 เท่า คาบการโคจร (เวลาที่ใช้โคจรครบ 1 รอบ) จะเปลี่ยนแปลงอย่างไร?',
+   o:['ก) ลดลงครึ่งหนึ่ง (0.5 เท่า)','ข) เท่าเดิม ไม่เปลี่ยนแปลง','ค) เพิ่มขึ้นมากกว่า 2 เท่า (ประมาณ 2.83 เท่า ตามกฎเคปเลอร์)','ง) เพิ่มขึ้นเป็น 2 เท่าพอดี'],
+   a:2,x:'จากกฎข้อที่ 3 ของเคปเลอร์ T² = a³ เมื่อ a เพิ่มเป็น 2 เท่า จะได้ T² = 2³ = 8 ดังนั้น T = √8 ≈ 2.83 เท่า คาบจึงยาวขึ้นมากกว่า 2 เท่า'},
+  {q:'2. จากแบบจำลอง เพราะเหตุใดดาวพุธจึงต้องมีความเร็วในวงโคจรสูงที่สุดในบรรดาดาวเคราะห์ทั้งหมด?',
+   o:['ก) เพราะดาวพุธมีมวลน้อยที่สุดในระบบสุริยะ','ข) เพราะอยู่ใกล้ดวงอาทิตย์มากที่สุด จึงมีแรงดึงดูดมหาศาล ต้องใช้วงโคจรรวดเร็วต้านการตกลงสู่ดวงอาทิตย์','ค) เพราะได้รับความร้อนจากดวงอาทิตย์ผลักให้เคลื่อนที่เร็ว','ง) เพราะดาวพุธมีบรรยากาศหนาแน่นสร้างแรงดันขับเคลื่อน'],
+   a:1,x:'ดาวพุธอยู่ใกล้ดวงอาทิตย์ที่สุด แรงดึงดูดจึงสูงมาก (F ∝ 1/r²) ดาวพุธต้องเคลื่อนที่เร็วเพื่อรักษาสมดุลไม่ให้ตกลงสู่ดวงอาทิตย์'},
+  {q:'3. หากนักเรียนเพิ่ม "มวลของดาวเคราะห์" ขึ้นเป็น 100 เท่า โดยรักษาระยะห่างคงที่ คาบการโคจรจะเปลี่ยนแปลงอย่างไร?',
+   o:['ก) แทบไม่เปลี่ยนแปลง เพราะมวลของดวงอาทิตย์เป็นหลักในการกำหนดคาบการโคจร','ข) คาบการโคจรจะช้าลง 100 เท่า','ค) คาบการโคจรจะเร็วขึ้น 10 เท่า','ง) ดาวเคราะห์จะหยุดหมุนทันที'],
+   a:0,x:'มวลของดาวเคราะห์น้อยมากเมื่อเทียบกับดวงอาทิตย์ (ดวงอาทิตย์มีมวลประมาณ 99.8% ของระบบสุริยะ) คาบและความเร็วจึงขึ้นกับระยะห่างและมวลของดวงอาทิตย์เป็นหลัก'}
+];
+
+const state={key:'earth',a:1,e:0.017,mass:1,paused:false,speed:1,t:0,M:0,vectors:true,others:true,labels:true,follow:false,custom:false,view:'overview'};
+
+const stage=$('stage');
+const host=$('webgl');
+const labelsEl=$('labels');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+host.appendChild(renderer.domElement);
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,1,0.1,900);
+camera.position.set(0,20,36);
+const controls=new THREE.OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;
+controls.dampingFactor=0.07;
+controls.minDistance=2.5;
+controls.maxDistance=100;
+controls.rotateSpeed=0.85;
+controls.zoomSpeed=0.9;
+controls.panSpeed=0.7;
+controls.autoRotateSpeed=1.4;
+controls.target.set(0,0,0);
+
+scene.add(new THREE.AmbientLight(0xd6dcff,0.45));
+scene.add(new THREE.HemisphereLight(0xfff3d6,0x6a4bd6,0.2));
+const sunLight=new THREE.PointLight(0xfff0c8,0.8,0,1);
+scene.add(sunLight);
+const rimLight=new THREE.DirectionalLight(0x9fd8ff,0.3);
+rimLight.position.set(-12,18,14);
+scene.add(rimLight);
+
+const toonGrad=(function(){
+  const d=new Uint8Array([110,170,225,255]);
+  const t=new THREE.DataTexture(d,4,1,THREE.LuminanceFormat);
+  t.minFilter=THREE.NearestFilter;
+  t.magFilter=THREE.NearestFilter;
+  t.generateMipmaps=false;
+  t.needsUpdate=true;
+  return t;
+})();
+
+function canvasTex(size,draw){
+  const c=document.createElement('canvas');
+  c.width=size;c.height=size;
+  draw(c.getContext('2d'),size);
+  const t=new THREE.CanvasTexture(c);
+  return t;
+}
+function starPath(g,cx,cy,or,ir,n){
+  g.beginPath();
+  for(let i=0;i<n*2;i++){
+    const r=i%2?ir:or;
+    const ang=-Math.PI/2+i*Math.PI/n;
+    const x=cx+Math.cos(ang)*r;
+    const y=cy+Math.sin(ang)*r;
+    if(i){g.lineTo(x,y);}else{g.moveTo(x,y);}
+  }
+  g.closePath();
+}
+const dotTex=canvasTex(64,function(g,s){g.fillStyle='#fff';g.beginPath();g.arc(s/2,s/2,s*0.42,0,TAU);g.fill();});
+const starTex=canvasTex(128,function(g,s){
+  starPath(g,s/2,s/2+3,s*0.46,s*0.2,5);
+  g.fillStyle='#fff';g.fill();
+  g.lineJoin='round';g.lineWidth=4;g.strokeStyle='rgba(255,255,255,.7)';g.stroke();
+});
+const glowTex=canvasTex(256,function(g,s){
+  const gr=g.createRadialGradient(s/2,s/2,s*0.1,s/2,s/2,s/2);
+  gr.addColorStop(0,'rgba(255,230,140,.95)');
+  gr.addColorStop(0.35,'rgba(255,190,70,.45)');
+  gr.addColorStop(1,'rgba(255,160,40,0)');
+  g.fillStyle=gr;g.fillRect(0,0,s,s);
+});
+const raysTex=canvasTex(512,function(g,s){
+  starPath(g,s/2,s/2,s*0.47,s*0.27,12);
+  g.fillStyle='#ffb520';g.fill();
+  g.lineJoin='round';g.lineWidth=9;g.strokeStyle='#8a3a00';g.stroke();
+});
+
+const texCache={};
+function paint(style){
+  const c=document.createElement('canvas');
+  c.width=512;c.height=256;
+  const g=c.getContext('2d');
+  const R=rng(style.length*131+7);
+  const blob=function(x,y,r,col){
+    g.fillStyle=col;
+    [-512,0,512].forEach(function(o){g.beginPath();g.arc(x+o,y,r,0,TAU);g.fill();});
+  };
+  const bands=function(cols,hMin,hVar){
+    let y=0,i=0;
+    while(y<256){
+      const h=hMin+R()*hVar;
+      g.fillStyle=cols[i%cols.length];
+      g.fillRect(0,y,512,h+2);
+      y+=h;i++;
+    }
+    for(let k=0;k<7;k++){
+      g.strokeStyle='rgba(255,255,255,.28)';
+      g.lineWidth=5;
+      g.beginPath();
+      const y0=18+k*36;
+      for(let x=0;x<=512;x+=8){
+        const yy=y0+Math.sin(x/512*TAU*2+k*1.7)*6;
+        if(x){g.lineTo(x,yy);}else{g.moveTo(x,yy);}
+      }
+      g.stroke();
+    }
+  };
+  if(style==='mercury'){
+    g.fillStyle='#c9c3d8';g.fillRect(0,0,512,256);
+    for(let i=0;i<24;i++){
+      const x=R()*512,y=20+R()*216,r=7+R()*17;
+      blob(x,y,r,'#a59eba');
+      blob(x-r*0.12,y-r*0.12,r*0.72,'#bcb5ce');
+    }
+  }else if(style==='venus'){
+    g.fillStyle='#ffd77f';g.fillRect(0,0,512,256);
+    g.lineCap='round';
+    for(let i=0;i<9;i++){
+      g.strokeStyle=i%2?'#ffeaa9':'#ffc45c';
+      g.lineWidth=14+R()*10;
+      g.beginPath();
+      const y0=14+i*28;
+      for(let x=0;x<=512;x+=8){
+        const yy=y0+Math.sin(x/512*TAU*2+i)*11;
+        if(x){g.lineTo(x,yy);}else{g.moveTo(x,yy);}
+      }
+      g.stroke();
+    }
+  }else if(style==='earth'){
+    g.fillStyle='#3fb0ff';g.fillRect(0,0,512,256);
+    for(let i=0;i<11;i++){
+      const cx=R()*512,cy=55+R()*146;
+      for(let k=0;k<6;k++){
+        blob(cx+(R()-0.5)*56,cy+(R()-0.5)*34,12+R()*17,'#63dd7c');
+      }
+      blob(cx,cy,9,'#8cf09a');
+    }
+    g.fillStyle='#ffffff';
+    g.beginPath();g.ellipse(256,0,300,24,0,0,TAU);g.fill();
+    g.beginPath();g.ellipse(256,256,300,24,0,0,TAU);g.fill();
+    g.globalAlpha=0.82;
+    for(let i=0;i<13;i++){
+      const cx=R()*512,cy=30+R()*196;
+      for(let k=0;k<4;k++){blob(cx+(R()-0.5)*40,cy+(R()-0.5)*14,8+R()*10,'#ffffff');}
+    }
+    g.globalAlpha=1;
+  }else if(style==='mars'){
+    g.fillStyle='#ff8f74';g.fillRect(0,0,512,256);
+    g.globalAlpha=0.7;
+    for(let i=0;i<20;i++){blob(R()*512,25+R()*206,9+R()*20,'#e8604f');}
+    g.globalAlpha=0.5;
+    for(let i=0;i<8;i++){blob(R()*512,25+R()*206,12+R()*16,'#c94b44');}
+    g.globalAlpha=1;
+    g.fillStyle='#ffffff';
+    g.beginPath();g.ellipse(256,0,230,20,0,0,TAU);g.fill();
+    g.beginPath();g.ellipse(256,256,190,14,0,0,TAU);g.fill();
+  }else if(style==='jupiter'){
+    bands(['#ffb877','#fff0d6','#ff9d5c','#fbd9b0','#e8794f','#ffe3c2','#ffa869'],22,20);
+    g.fillStyle='#ff6a5a';
+    g.beginPath();g.ellipse(330,172,36,21,0,0,TAU);g.fill();
+    g.strokeStyle='#ffd2c2';g.lineWidth=5;g.stroke();
+  }else if(style==='saturn'){
+    bands(['#ffe58a','#fff4bf','#ffd467','#fff0a8'],26,20);
+  }else{
+    g.fillStyle='#b983ff';g.fillRect(0,0,512,256);
+    for(let i=0;i<46;i++){blob(R()*512,10+R()*236,4+R()*9,'#e6c2ff');}
+    for(let i=0;i<16;i++){blob(R()*512,10+R()*236,3+R()*4,'#ffffff');}
+  }
+  const t=new THREE.CanvasTexture(c);
+  t.wrapS=THREE.RepeatWrapping;
+  return t;
+}
+function getTex(style){
+  if(!texCache[style]){texCache[style]=paint(style);}
+  return texCache[style];
+}
+
+function buildFace(){
+  const g=new THREE.Group();
+  const eyes=new THREE.Group();
+  const white=new THREE.MeshBasicMaterial({color:0xffffff});
+  const dark=new THREE.MeshBasicMaterial({color:0x2b1b4d});
+  [-1,1].forEach(function(s){
+    const eye=new THREE.Group();
+    eye.position.set(s*0.27,0.1,0.02);
+    const edge=new THREE.Mesh(new THREE.SphereGeometry(0.2,20,14),dark);
+    edge.scale.set(1.13,1.27,0.3);
+    const w=new THREE.Mesh(new THREE.SphereGeometry(0.2,20,14),white);
+    w.scale.set(1,1.15,0.35);
+    w.position.z=0.02;
+    const p=new THREE.Mesh(new THREE.SphereGeometry(0.12,16,12),dark);
+    p.position.set(0,-0.02,0.07);
+    p.scale.set(1,1.1,0.4);
+    const h=new THREE.Mesh(new THREE.SphereGeometry(0.04,10,8),white);
+    h.position.set(0.045,0.045,0.11);
+    h.scale.z=0.4;
+    eye.add(edge,w,p,h);
+    eyes.add(eye);
+  });
+  g.add(eyes);
+  const cheekMat=new THREE.MeshBasicMaterial({color:0xff7fa8,transparent:true,opacity:0.8});
+  [-1,1].forEach(function(s){
+    const c=new THREE.Mesh(new THREE.CircleGeometry(0.1,20),cheekMat);
+    c.position.set(s*0.43,-0.12,0.03);
+    c.scale.set(1.2,0.8,1);
+    g.add(c);
+  });
+  const mouth=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.028,8,22,Math.PI),dark);
+  mouth.rotation.z=Math.PI;
+  mouth.position.set(0,-0.08,0.05);
+  g.add(mouth);
+  g.userData={eyes:eyes,mouth:mouth};
+  return g;
+}
+
+function buildPlanet(key){
+  const p=presets[key];
+  const group=new THREE.Group();
+  const body=new THREE.Mesh(new THREE.SphereGeometry(1,40,28),new THREE.MeshToonMaterial({map:getTex(p.style),gradientMap:toonGrad}));
+  const outline=new THREE.Mesh(new THREE.SphereGeometry(1.07,32,22),new THREE.MeshBasicMaterial({color:0x2b1b4d,side:THREE.BackSide}));
+  const face=buildFace();
+  group.add(outline,body,face);
+  let ringMesh=null;
+  if(p.ring){
+    const rg=new THREE.Group();
+    const r1=new THREE.Mesh(new THREE.RingGeometry(1.45,1.85,64).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xffe08a,side:THREE.DoubleSide}));
+    const r2=new THREE.Mesh(new THREE.RingGeometry(1.92,2.35,64).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0xff9ad5,side:THREE.DoubleSide,transparent:true,opacity:0.92}));
+    rg.add(r1,r2);
+    rg.rotation.z=0.42;
+    rg.rotation.x=0.18;
+    group.add(rg);
+    ringMesh=[r1,r2];
+  }
+  group.userData={body:body,face:face,ring:ringMesh,key:key,base:1,hv:0,bn:0};
+  return group;
+}
+
+function disposeGroup(g){
+  g.traverse(function(o){
+    if(o.geometry){o.geometry.dispose();}
+    if(o.material&&!o.material.map){o.material.dispose();}
+  });
+}
+
+const sun=new THREE.Group();
+const sunBody=new THREE.Mesh(new THREE.SphereGeometry(1.6,40,28),new THREE.MeshBasicMaterial({color:0xffc93c}));
+const sunOutline=new THREE.Mesh(new THREE.SphereGeometry(1.7,32,22),new THREE.MeshBasicMaterial({color:0x7a2f00,side:THREE.BackSide}));
+const sunFace=buildFace();
+sunFace.scale.setScalar(1.6);
+const sunRays=new THREE.Sprite(new THREE.SpriteMaterial({map:raysTex,transparent:true,depthWrite:true}));
+sunRays.scale.set(9.4,9.4,1);
+const sunGlow=new THREE.Sprite(new THREE.SpriteMaterial({map:glowTex,transparent:true,blending:THREE.AdditiveBlending,depthWrite:false}));
+sunGlow.scale.set(19,19,1);
+sun.add(sunGlow,sunRays,sunOutline,sunBody,sunFace);
+sun.userData={face:sunFace,base:1,hv:0,bn:0,key:'sun'};
+scene.add(sun);
+
+function makeOrbitPoints(count,size,color,opacity){
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(new Float32Array(count*3),3));
+  const mat=new THREE.PointsMaterial({color:color,size:size,map:dotTex,transparent:true,opacity:opacity,alphaTest:0.3,depthWrite:false,sizeAttenuation:true});
+  const pts=new THREE.Points(geo,mat);
+  pts.frustumCulled=false;
+  pts.userData.count=count;
+  return pts;
+}
+function fillOrbit(pts,a,e){
+  const n=pts.userData.count;
+  const arr=pts.geometry.attributes.position.array;
+  const sq=Math.sqrt(1-e*e);
+  for(let i=0;i<n;i++){
+    const E=i/n*TAU;
+    const x=a*(Math.cos(E)-e);
+    const y=a*sq*Math.sin(E);
+    const r=Math.hypot(x,y);
+    const k=vis(r)/r;
+    arr[i*3]=x*k;
+    arr[i*3+1]=0;
+    arr[i*3+2]=-y*k;
+  }
+  pts.geometry.attributes.position.needsUpdate=true;
+}
+function keplerE(M,e){
+  let E=M+e*Math.sin(M);
+  for(let i=0;i<8;i++){
+    E-=(E-e*Math.sin(E)-M)/(1-e*Math.cos(E));
+  }
+  return E;
+}
+function orbitPos(a,e,M,out){
+  const m=((M%TAU)+TAU)%TAU;
+  const E=keplerE(m,e);
+  const x=a*(Math.cos(E)-e);
+  const y=a*Math.sqrt(1-e*e)*Math.sin(E);
+  const r=Math.hypot(x,y);
+  const k=vis(r)/r;
+  out.set(x*k,0,-y*k);
+  return r;
+}
+
+const tags=[];
+function makeTag(getKey,getText,color,cls,getObj,getOff){
+  const el=document.createElement('button');
+  el.className='tag '+(cls||'');
+  el.style.setProperty('--c',color);
+  el.innerHTML='<span class="dot"></span><span class="nm"></span>';
+  el.addEventListener('click',function(){onBodyClick(getKey());});
+  labelsEl.appendChild(el);
+  const t={el:el,nm:el.querySelector('.nm'),getKey:getKey,getText:getText,getObj:getObj,getOff:getOff,last:''};
+  tags.push(t);
+  return t;
+}
+
+const refs={};
+refKeys.forEach(function(k){
+  const p=presets[k];
+  const group=buildPlanet(k);
+  const s=radOf(p.mass)*0.72;
+  group.userData.base=s;
+  group.scale.setScalar(s);
+  scene.add(group);
+  const orbit=makeOrbitPoints(130,0.11,new THREE.Color(p.color),0.5);
+  fillOrbit(orbit,p.a,p.e);
+  scene.add(orbit);
+  refs[k]={key:k,group:group,orbit:orbit,phase:refPhase[k]};
+  makeTag(function(){return k;},function(){return p.name;},p.color,'',function(){return group;},function(){return group.scale.x*1.25+0.35;});
+});
+
+const exp={group:null,orbit:makeOrbitPoints(240,0.17,new THREE.Color(0xffffff),0.95)};
+scene.add(exp.orbit);
+
+const velArrow=makeArrow(0x3ee6ff);
+const forArrow=makeArrow(0xff6fb5);
+scene.add(velArrow,forArrow);
+
+function makeArrow(color){
+  const g=new THREE.Group();
+  const mat=new THREE.MeshBasicMaterial({color:color});
+  const shaft=new THREE.Mesh(new THREE.CylinderGeometry(0.075,0.075,1,12).translate(0,0.5,0),mat);
+  const head=new THREE.Mesh(new THREE.ConeGeometry(0.22,0.46,16),mat);
+  g.add(shaft,head);
+  g.userData={shaft:shaft,head:head};
+  return g;
+}
+function setArrow(g,origin,dir,len){
+  g.position.copy(origin);
+  g.quaternion.setFromUnitVectors(UP,dir);
+  const sl=Math.max(0.1,len-0.46);
+  g.userData.shaft.scale.set(1,sl,1);
+  g.userData.head.position.set(0,sl+0.23,0);
+}
+
+const pickables=[];
+function rebuildPicks(){
+  pickables.length=0;
+  pickables.push({mesh:sunBody,key:'sun',group:sun});
+  refKeys.forEach(function(k){
+    const r=refs[k];
+    pickables.push({mesh:r.group.userData.body,key:k,group:r.group});
+    if(r.group.userData.ring){r.group.userData.ring.forEach(function(m){pickables.push({mesh:m,key:k,group:r.group});});}
+  });
+  if(exp.group){
+    pickables.push({mesh:exp.group.userData.body,key:null,group:exp.group});
+    if(exp.group.userData.ring){exp.group.userData.ring.forEach(function(m){pickables.push({mesh:m,key:null,group:exp.group});});}
+  }
+}
+
+function buildExp(){
+  if(exp.group){scene.remove(exp.group);disposeGroup(exp.group);}
+  exp.group=buildPlanet(state.key);
+  scene.add(exp.group);
+  rebuildPicks();
+}
+
+makeTag(function(){return 'sun';},function(){return '☀️ ดวงอาทิตย์';},'#ffb020','',function(){return sun;},function(){return 2.35;});
+const expTag=makeTag(function(){return state.key;},function(){return '⭐ '+expName();},'#ffd23f','me',function(){return exp.group;},function(){return exp.group.scale.x*1.25+0.4;});
+
+const stars=(function(){
+  const n=1100;
+  const pos=new Float32Array(n*3);
+  const col=new Float32Array(n*3);
+  const pal=[new THREE.Color(0xffffff),new THREE.Color(0xfff1a8),new THREE.Color(0xa8f0ff),new THREE.Color(0xffb8e6)];
+  const R=rng(2026);
+  for(let i=0;i<n;i++){
+    const u=R()*2-1,th=R()*TAU,rr=Math.sqrt(1-u*u),d=70+R()*160;
+    pos[i*3]=rr*Math.cos(th)*d;pos[i*3+1]=u*d;pos[i*3+2]=rr*Math.sin(th)*d;
+    const c=pal[Math.floor(R()*pal.length)];
+    col[i*3]=c.r;col[i*3+1]=c.g;col[i*3+2]=c.b;
+  }
+  const geo=new THREE.BufferGeometry();
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  geo.setAttribute('color',new THREE.BufferAttribute(col,3));
+  const pts=new THREE.Points(geo,new THREE.PointsMaterial({size:1.6,map:dotTex,vertexColors:true,transparent:true,alphaTest:0.3,depthWrite:false,sizeAttenuation:true}));
+  pts.frustumCulled=false;
+  scene.add(pts);
+  return pts;
+})();
+
+const twinkles=[];
+(function(){
+  const R=rng(77);
+  const cols=[0xfff176,0xff8ad8,0x7ef0ff,0xb69cff,0x9bffc8];
+  for(let i=0;i<40;i++){
+    const u=R()*2-1,th=R()*TAU,rr=Math.sqrt(1-u*u),d=40+R()*55;
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:starTex,color:cols[i%cols.length],transparent:true,depthWrite:false}));
+    sp.position.set(rr*Math.cos(th)*d,u*d*0.7,rr*Math.sin(th)*d);
+    const s=1.2+R()*2.2;
+    sp.scale.set(s,s,1);
+    sp.userData={s:s,ph:R()*TAU,sp:0.8+R()*1.6};
+    scene.add(sp);
+    twinkles.push(sp);
+  }
+})();
+
+const bursts=[];
+function burst(pos,color,count){
+  for(let i=0;i<count;i++){
+    const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:starTex,color:color,transparent:true,depthWrite:false}));
+    sp.position.copy(pos);
+    const s=0.45+Math.random()*0.55;
+    sp.scale.set(s,s,1);
+    const d=new V(Math.random()-0.5,Math.random()-0.2,Math.random()-0.5).normalize().multiplyScalar(2+Math.random()*3.5);
+    bursts.push({sp:sp,vel:d,life:0,max:0.9+Math.random()*0.6,s:s});
+    scene.add(sp);
+  }
+}
+
+const card=$('card');
+let cardKey=null;
+function showCard(t,k){
+  cardKey=k;
+  card.style.setProperty('--c',t.color);
+  let h='<div class="card-head"><div class="card-emoji">'+t.emoji+'</div><div class="card-ttl"><div class="card-kicker">'+(t.kicker||'ข้อมูลน่ารู้')+'</div><h3>'+t.title+'</h3></div><button class="card-x" id="cardX" aria-label="ปิดการ์ด">✕</button></div><div class="card-body">';
+  t.text.forEach(function(p){h+='<p>'+p+'</p>';});
+  if(t.stats){
+    h+='<div class="stats">';
+    t.stats.forEach(function(s){h+='<div class="stat"><small>'+s[0]+'</small><b>'+s[1]+'</b></div>';});
+    h+='</div>';
+  }
+  if(t.fact){h+='<div class="fact">💡 '+t.fact+'</div>';}
+  if(t.action){h+='<button class="card-act" id="cardAct">'+t.action.label+'</button>';}
+  if(t.demo){h+='<button class="card-act" id="cardAct">'+t.demo.label+'</button>';}
+  h+='</div>';
+  card.innerHTML=h;
+  card.scrollTop=0;
+  card.classList.add('show');
+  $('cardX').addEventListener('click',closeCard);
+  const act=$('cardAct');
+  if(act){
+    act.addEventListener('click',function(){
+      if(t.action){selectPreset(t.action.key,true);}
+      if(t.demo){setValues(t.demo.vals);}
+      $('tabs').querySelector('[data-tab="lab"]').click();
+    });
+  }
+}
+function closeCard(){card.classList.remove('show');cardKey=null;}
+function openCard(k){
+  const t=topics[k];
+  if(!t){return;}
+  if(window.matchMedia('(max-width:820px)').matches){stage.scrollIntoView({behavior:'smooth',block:'start'});}
+  if(card.classList.contains('show')){
+    card.classList.remove('show');
+    void card.offsetWidth;
+  }
+  showCard(t,k);
+}
+
+function groupOf(key){
+  if(key==='sun'){return sun;}
+  if(key===state.key){return exp.group;}
+  return refs[key]?refs[key].group:null;
+}
+function onBodyClick(key){
+  openCard(key);
+  const g=groupOf(key);
+  if(g){
+    g.userData.bn=1;
+    const wp=g.position.clone();
+    const colors={sun:0xffd23f};
+    const c=colors[key]||new THREE.Color(presets[key]?presets[key].color:'#ffffff').getHex();
+    burst(wp,c,12);
+  }
+}
+
+function expName(){
+  return presets[state.key].name+(state.custom&&state.key!=='custom'?' (ปรับแต่ง)':'');
+}
+
+const metricDefs=[
+  ['r','📏 ระยะห่างขณะนี้','#ffb020','distance'],
+  ['v','🚀 ความเร็วขณะนี้','#3ee6ff','speed'],
+  ['f','🧲 แรงดึงดูด','#ff6fb5','force'],
+  ['tp','🌡️ อุณหภูมิประมาณการ','#ffd23f','temp'],
+  ['T','⏳ คาบการโคจร (T)','#a78bfa','period'],
+  ['lp','🔁 โคจรแล้ว','#5df2b0','laps']
+];
+const metricsEl=$('metrics');
+const metricNodes={};
+metricDefs.forEach(function(d){
+  const b=document.createElement('button');
+  b.className='met';
+  b.style.setProperty('--c',d[2]);
+  b.innerHTML='<small>'+d[1]+'</small><b id="m_'+d[0]+'">-</b>';
+  b.addEventListener('click',function(){openCard(d[3]);});
+  metricsEl.appendChild(b);
+  metricNodes[d[0]]=b.querySelector('b');
+});
+
+const chipsEl=$('chips');
+Object.keys(presets).forEach(function(k){
+  const p=presets[k];
+  const b=document.createElement('button');
+  b.className='chip';
+  b.style.setProperty('--c',p.color);
+  b.dataset.k=k;
+  b.innerHTML='<i></i>'+p.name.replace('ดาวเคราะห์กำหนดเอง','กำหนดเอง');
+  b.addEventListener('click',function(){selectPreset(k,true);});
+  chipsEl.appendChild(b);
+});
+
+const tilesEl=$('tiles');
+tileList.forEach(function(t){
+  const b=document.createElement('button');
+  b.className='tile';
+  b.innerHTML='<span>'+t[1]+'</span>'+t[2];
+  b.addEventListener('click',function(){openCard(t[0]);});
+  tilesEl.appendChild(b);
+});
+document.querySelectorAll('.info').forEach(function(b){
+  b.addEventListener('click',function(e){e.preventDefault();openCard(b.dataset.topic);});
+});
+
+const sA=$('sA'),sM=$('sM'),sE=$('sE');
+function fmtMass(m){return (m<10?m.toFixed(2):m.toFixed(1))+' M⊕';}
+function syncUI(){
+  sA.value=state.a;sM.value=state.mass;sE.value=state.e;
+  $('vA').textContent=state.a.toFixed(2)+' AU';
+  $('vM').textContent=fmtMass(state.mass);
+  $('vE').textContent=state.e.toFixed(2);
+  document.querySelectorAll('.chip').forEach(function(c){c.classList.toggle('on',c.dataset.k===state.key);});
+  $('who').textContent='⭐ กำลังทดลองกับ: '+expName();
+}
+
+let chart=null;
+function buildChart(){
+  if(typeof Chart==='undefined'){return;}
+  Chart.defaults.color='#e8e4ff';
+  Chart.defaults.font.family="'Prompt',sans-serif";
+  const curve=[];
+  for(let x=0.1;x<=10.6;x+=0.25){curve.push({x:+x.toFixed(2),y:+Math.pow(x,1.5).toFixed(3)});}
+  const real=refKeys.map(function(k){return {x:presets[k].a,y:+Math.pow(presets[k].a,1.5).toFixed(3)};});
+  chart=new Chart($('chart').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[
+      {label:'เส้นกฎเคปเลอร์ T = a^1.5',data:curve,showLine:true,borderColor:'#ffe066',borderWidth:3,pointRadius:0,tension:0.35},
+      {label:'ดาวเคราะห์จริง',data:real,backgroundColor:refKeys.map(function(k){return presets[k].color;}),borderColor:'#ffffff',borderWidth:2,pointRadius:5},
+      {label:'ดาวของคุณ',data:[{x:state.a,y:Math.pow(state.a,1.5)}],backgroundColor:'#ff6fb5',borderColor:'#ffffff',borderWidth:3,pointRadius:10,pointStyle:'star'}
+    ]},
+    options:{
+      responsive:true,maintainAspectRatio:false,animation:false,
+      scales:{
+        x:{type:'linear',min:0,max:10.6,title:{display:true,text:'ระยะห่างเฉลี่ย a (AU)',font:{size:11}},ticks:{font:{size:10}},grid:{color:'rgba(255,255,255,.1)'}},
+        y:{min:0,max:34,title:{display:true,text:'คาบการโคจร T (ปีโลก)',font:{size:11}},ticks:{font:{size:10}},grid:{color:'rgba(255,255,255,.1)'}}
+      },
+      plugins:{
+        legend:{labels:{boxWidth:10,font:{size:10}}},
+        tooltip:{callbacks:{label:function(c){return 'a = '+c.parsed.x.toFixed(2)+' AU, T = '+c.parsed.y.toFixed(2)+' ปี';}}}
+      }
+    }
+  });
+}
+function updateChart(){
+  if(!chart){return;}
+  chart.data.datasets[2].data=[{x:state.a,y:Math.pow(state.a,1.5)}];
+  chart.update('none');
+}
+
+function applyParams(){
+  fillOrbit(exp.orbit,state.a,state.e);
+  const s=radOf(state.mass);
+  exp.group.userData.base=s;
+  updateChart();
+  syncUI();
+}
+
+function setValues(v){
+  if(v.a!==undefined){state.a=v.a;}
+  if(v.mass!==undefined){state.mass=v.mass;}
+  if(v.e!==undefined){state.e=v.e;}
+  if(state.key!=='custom'){state.custom=true;}
+  applyParams();
+}
+
+function selectPreset(key,fly){
+  const p=presets[key];
+  const oldKey=state.key;
+  state.key=key;
+  state.custom=false;
+  state.a=p.a;state.mass=p.mass;state.e=p.e;
+  if(key!==oldKey||!exp.group){
+    buildExp();
+    exp.orbit.material.color.set(p.color);
+  }
+  if(refPhase[key]!==undefined){
+    state.M=TAU*(state.t/Math.pow(p.a,1.5)+refPhase[key]);
+  }
+  exp.group.userData.base=radOf(p.mass);
+  exp.group.scale.setScalar(exp.group.userData.base);
+  applyParams();
+  if(fly){viewMode(state.follow?'follow':'overview');}
+}
+
+function overviewRadius(){
+  return state.others?17:vis(state.a*(1+state.e))+2;
+}
+let tween=null;
+function flyTo(pos,target,dur,done){
+  state.follow=false;
+  tween={t:0,dur:dur||1.2,fp:camera.position.clone(),tp:pos.clone(),ft:controls.target.clone(),tt:target.clone(),done:done};
+}
+function viewMode(m){
+  state.view=m;
+  document.querySelectorAll('.vbtn').forEach(function(b){b.classList.toggle('on',b.dataset.view===m);});
+  const R=overviewRadius();
+  if(m==='overview'){flyTo(new V(0,R*0.85+4,R*1.55+8),ZERO,1.3);}
+  else if(m==='top'){flyTo(new V(0.02,R*2.3+8,0.02),ZERO,1.3);}
+  else if(m==='side'){flyTo(new V(0,2.2,R*2.4+8),ZERO,1.3);}
+  else{
+    const p=exp.group.position.clone();
+    const r=exp.group.scale.x;
+    flyTo(p.clone().add(new V(r*3+2.2,r*2.2+1.6,r*4.5+3.2)),p,1.3,function(){state.follow=true;});
+  }
+}
+document.querySelectorAll('.vbtn').forEach(function(b){
+  b.addEventListener('click',function(){viewMode(b.dataset.view);});
+});
+
+sA.addEventListener('input',function(){setValues({a:parseFloat(sA.value)});});
+sM.addEventListener('input',function(){setValues({mass:parseFloat(sM.value)});});
+sE.addEventListener('input',function(){setValues({e:parseFloat(sE.value)});});
+
+$('bPause').addEventListener('click',togglePause);
+function togglePause(){
+  state.paused=!state.paused;
+  $('bPause').innerHTML=state.paused?'▶️ เล่นต่อ':'⏸️ หยุด';
+  $('bPause').classList.toggle('on',state.paused);
+}
+$('speedSeg').querySelectorAll('button').forEach(function(b){
+  b.addEventListener('click',function(){
+    state.speed=parseFloat(b.dataset.s);
+    $('speedSeg').querySelectorAll('button').forEach(function(x){x.classList.toggle('on',x===b);});
+  });
+});
+$('bVec').addEventListener('click',function(){state.vectors=!state.vectors;this.classList.toggle('on',state.vectors);});
+$('bOthers').addEventListener('click',function(){state.others=!state.others;this.classList.toggle('on',state.others);});
+$('bLabels').addEventListener('click',function(){state.labels=!state.labels;this.classList.toggle('on',state.labels);});
+$('bRot').addEventListener('click',function(){controls.autoRotate=!controls.autoRotate;this.classList.toggle('on',controls.autoRotate);});
+$('bReset').addEventListener('click',function(){
+  state.t=0;
+  state.M=refPhase[state.key]!==undefined?TAU*refPhase[state.key]:0;
+});
+
+document.querySelectorAll('#tabs button').forEach(function(b){
+  b.addEventListener('click',function(){
+    document.querySelectorAll('#tabs button').forEach(function(x){x.classList.toggle('on',x===b);});
+    document.querySelectorAll('.pane').forEach(function(p){p.classList.remove('on');});
+    $('pane-'+b.dataset.tab).classList.add('on');
+  });
+});
+
+window.addEventListener('keydown',function(e){
+  if(e.key==='Escape'){closeCard();}
+  if(e.code==='Space'&&e.target===document.body){e.preventDefault();togglePause();}
+});
+
+const ray=new THREE.Raycaster();
+const ndc=new THREE.Vector2();
+let hoverGroup=null;
+function pick(ev){
+  const r=renderer.domElement.getBoundingClientRect();
+  ndc.set(((ev.clientX-r.left)/r.width)*2-1,-((ev.clientY-r.top)/r.height)*2+1);
+  ray.setFromCamera(ndc,camera);
+  const vis2=pickables.filter(function(p){return p.group.visible;});
+  const hit=ray.intersectObjects(vis2.map(function(p){return p.mesh;}),false)[0];
+  if(!hit){return null;}
+  return vis2.find(function(p){return p.mesh===hit.object;});
+}
+let downX=0,downY=0;
+renderer.domElement.addEventListener('pointerdown',function(e){downX=e.clientX;downY=e.clientY;});
+renderer.domElement.addEventListener('pointerup',function(e){
+  if(Math.hypot(e.clientX-downX,e.clientY-downY)>6){return;}
+  const p=pick(e);
+  if(p){onBodyClick(p.key===null?state.key:p.key);}
+});
+renderer.domElement.addEventListener('pointermove',function(e){
+  if(e.buttons){return;}
+  const p=pick(e);
+  hoverGroup=p?p.group:null;
+  renderer.domElement.style.cursor=p?'pointer':'grab';
+});
+renderer.domElement.addEventListener('pointerleave',function(){hoverGroup=null;});
+
+let W=1,H=1;
+function resize(){
+  const w=stage.clientWidth,h=stage.clientHeight;
+  if(!w||!h){return;}
+  W=w;H=h;
+  renderer.setSize(w,h);
+  camera.aspect=w/h;
+  camera.fov=w/h<0.9?62:(w/h<1.3?52:45);
+  camera.updateProjectionMatrix();
+}
+if(window.ResizeObserver){new ResizeObserver(resize).observe(stage);}
+window.addEventListener('resize',resize);
+
+let answered=[false,false,false];
+function renderQuiz(){
+  const box=$('quiz');
+  box.innerHTML='';
+  answered=[false,false,false];
+  quizData.forEach(function(q,qi){
+    const d=document.createElement('div');
+    d.className='q';
+    let h='<p>'+q.q+'</p><div class="opts">';
+    q.o.forEach(function(o,oi){h+='<button class="opt" data-q="'+qi+'" data-o="'+oi+'">'+o+'</button>';});
+    h+='</div><div class="fb" id="fb'+qi+'"></div>';
+    d.innerHTML=h;
+    box.appendChild(d);
+  });
+  box.querySelectorAll('.opt').forEach(function(b){
+    b.addEventListener('click',function(){checkAnswer(+b.dataset.q,+b.dataset.o,b);});
+  });
+  updateScore();
+  $('qDone').classList.remove('show');
+}
+function checkAnswer(qi,oi,btn){
+  if(answered[qi]){return;}
+  const q=quizData[qi];
+  const fb=$('fb'+qi);
+  fb.classList.remove('show','ok','bad');
+  void fb.offsetWidth;
+  if(oi===q.a){
+    answered[qi]=true;
+    btn.classList.add('ok');
+    btn.parentNode.querySelectorAll('.opt').forEach(function(x){x.disabled=true;});
+    fb.className='fb ok show';
+    fb.innerHTML='<b>✅ ถูกต้อง!</b><br>'+q.x;
+    burst(sun.position.clone().add(new V(0,2,0)),0xffd23f,10);
+  }else{
+    btn.classList.add('bad');
+    setTimeout(function(){btn.classList.remove('bad');},900);
+    fb.className='fb bad show';
+    fb.innerHTML='<b>❌ ยังไม่ถูกต้อง ลองสังเกตจากแบบจำลองแล้วตอบใหม่อีกครั้ง</b><br>'+q.x;
+  }
+  updateScore();
+}
+function updateScore(){
+  const s=answered.filter(Boolean).length;
+  $('qScore').textContent=s+' / 3';
+  $('qBar').style.width=(s/3*100)+'%';
+  if(s===3){
+    $('qDone').classList.add('show');
+    const cols=[0xffd23f,0xff6fb5,0x3ee6ff,0x5df2b0];
+    cols.forEach(function(c,i){setTimeout(function(){burst(new V((i-1.5)*2,2,0),c,12);},i*180);});
+  }
+}
+$('qAgain').addEventListener('click',renderQuiz);
+
+const tmpA=new V(),tmpB=new V(),tmpC=new V(),tmpD=new V(),camUp=new V(),dirV=new V();
+const mat4=new THREE.Matrix4();
+const faceQuat=new THREE.Quaternion();
+function aimFace(group,face,dist){
+  dirV.copy(camera.position).sub(group.position);
+  if(dirV.lengthSq()<1e-6){dirV.set(0,0,1);}
+  dirV.normalize();
+  face.position.copy(dirV).multiplyScalar(dist);
+  mat4.lookAt(dirV,ZERO,camUp);
+  faceQuat.setFromRotationMatrix(mat4);
+  face.quaternion.copy(faceQuat);
+}
+
+let blink=2.5,blinkOpen=1,blinking=0;
+let metricAcc=0;
+const clock=new THREE.Clock();
+let timeAcc=0;
+let first=true;
+
+function updateMetrics(r,T){
+  const a=state.a;
+  const v=29.78*Math.sqrt(Math.max(0.0001,2/r-1/a));
+  const f=state.mass/(r*r);
+  const tempC=Math.round(288/Math.sqrt(r)-273.15);
+  metricNodes.r.innerHTML=r.toFixed(2)+' <em>AU</em>';
+  metricNodes.v.innerHTML=v.toFixed(2)+' <em>km/s</em>';
+  metricNodes.f.innerHTML=(f<10?f.toFixed(2):f.toFixed(1))+' <em>F โลก</em>';
+  metricNodes.tp.innerHTML=tempC+' <em>°C</em>';
+  metricNodes.T.innerHTML=T.toFixed(2)+' <em>ปีโลก</em>';
+  metricNodes.lp.innerHTML=(state.M/TAU).toFixed(2)+' <em>รอบ</em>';
+  $('hudTime').textContent=state.t.toFixed(2);
+  $('hudLaps').textContent=(state.M/TAU).toFixed(2);
+}
+
+function frame(){
+  requestAnimationFrame(frame);
+  const dt=Math.min(clock.getDelta(),0.05);
+  timeAcc+=dt;
+  const T=Math.pow(state.a,1.5);
+  if(!state.paused){
+    const dy=dt*state.speed/AU_SEC;
+    state.t+=dy;
+    state.M+=TAU*dy/T;
+  }
+
+  camUp.set(0,1,0).applyQuaternion(camera.quaternion);
+
+  if(tween){
+    tween.t+=dt;
+    const k=ease(Math.min(1,tween.t/tween.dur));
+    camera.position.lerpVectors(tween.fp,tween.tp,k);
+    controls.target.lerpVectors(tween.ft,tween.tt,k);
+    if(tween.t>=tween.dur){
+      const dn=tween.done;
+      tween=null;
+      if(dn){dn();}
+    }
+  }
+
+  refKeys.forEach(function(k){
+    const r=refs[k];
+    const p=presets[k];
+    const show=state.others&&!(k===state.key);
+    r.group.visible=show;
+    r.orbit.visible=show;
+    if(show){
+      const M=TAU*(state.t/Math.pow(p.a,1.5)+r.phase);
+      orbitPos(p.a,p.e,M,r.group.position);
+    }
+  });
+
+  const rNow=orbitPos(state.a,state.e,state.M,exp.group.position);
+  orbitPos(state.a,state.e,state.M+0.012,tmpA);
+  tmpB.copy(tmpA).sub(exp.group.position);
+  if(tmpB.lengthSq()<1e-12){tmpB.set(1,0,0);}
+  tmpB.normalize();
+
+  if(state.follow&&!tween){
+    const before=controls.target.clone();
+    controls.target.lerp(exp.group.position,0.12);
+    camera.position.add(tmpC.copy(controls.target).sub(before));
+  }
+
+  if(first){
+    first=false;
+    $('loading').classList.add('done');
+  }
+
+  const allGroups=[sun,exp.group];
+  refKeys.forEach(function(k){allGroups.push(refs[k].group);});
+
+  blink-=dt;
+  if(blink<=0&&blinking<=0){blinking=0.14;blink=2.5+Math.random()*3;}
+  if(blinking>0){blinking-=dt;blinkOpen=0.1;}else{blinkOpen=1;}
+
+  allGroups.forEach(function(g){
+    const u=g.userData;
+    const target=hoverGroup===g?1:0;
+    u.hv+=(target-u.hv)*Math.min(1,dt*10);
+    u.bn=Math.max(0,u.bn-dt*1.5);
+    const sc=u.base*(1+0.12*u.hv+0.32*Math.sin(u.bn*Math.PI));
+    g.scale.setScalar(sc);
+    if(g!==sun){
+      u.body.rotation.y+=dt*0.35;
+      aimFace(g,u.face,0.97);
+    }else{
+      aimFace(g,u.face,1.55);
+    }
+    u.face.userData.eyes.scale.y=blinkOpen*(1+0.15*u.hv);
+    u.face.userData.mouth.scale.setScalar(1+0.45*u.hv+0.6*Math.sin(u.bn*Math.PI));
+  });
+
+  sunRays.material.rotation+=dt*0.18;
+  const gs=19+Math.sin(timeAcc*2)*0.7;
+  sunGlow.scale.set(gs,gs,1);
+
+  twinkles.forEach(function(s){
+    const k=0.6+0.4*Math.sin(timeAcc*s.userData.sp+s.userData.ph);
+    s.scale.set(s.userData.s*k,s.userData.s*k,1);
+    s.material.opacity=0.45+0.55*k;
+  });
+  stars.rotation.y+=dt*0.004;
+
+  const rad=exp.group.scale.x;
+  velArrow.visible=state.vectors;
+  forArrow.visible=state.vectors;
+  if(state.vectors){
+    const v=29.78*Math.sqrt(Math.max(0.0001,2/rNow-1/state.a));
+    const vl=clamp(0.9+v/28,1.1,4.2);
+    tmpC.copy(exp.group.position).addScaledVector(tmpB,rad*1.1);
+    setArrow(velArrow,tmpC,tmpB,vl);
+    const f=state.mass/(rNow*rNow);
+    const fl=clamp(0.8+1.2*Math.min(3,Math.log10(1+f*3)),1,4.4);
+    tmpD.copy(exp.group.position).multiplyScalar(-1).normalize();
+    tmpC.copy(exp.group.position).addScaledVector(tmpD,rad*1.1);
+    setArrow(forArrow,tmpC,tmpD,fl);
+  }
+
+  for(let i=bursts.length-1;i>=0;i--){
+    const b=bursts[i];
+    b.life+=dt;
+    b.sp.position.addScaledVector(b.vel,dt);
+    b.vel.multiplyScalar(0.96);
+    const k=1-b.life/b.max;
+    if(k<=0){
+      scene.remove(b.sp);
+      b.sp.material.dispose();
+      bursts.splice(i,1);
+    }else{
+      b.sp.material.opacity=k;
+      const s=b.s*(0.5+k);
+      b.sp.scale.set(s,s,1);
+    }
+  }
+
+  metricAcc+=dt;
+  if(metricAcc>0.1){metricAcc=0;updateMetrics(rNow,T);}
+
+  controls.update();
+  renderer.render(scene,camera);
+
+  tags.forEach(function(t){
+    const obj=t.getObj();
+    const show=state.labels&&obj&&obj.visible;
+    if(!show){t.el.style.display='none';return;}
+    t.el.style.display='';
+    const txt=t.getText();
+    if(txt!==t.last){t.nm.textContent=txt;t.last=txt;}
+    tmpA.copy(obj.position);
+    tmpA.y+=t.getOff();
+    tmpA.project(camera);
+    const hidden=tmpA.z>1;
+    const x=(tmpA.x*0.5+0.5)*W;
+    const y=(-tmpA.y*0.5+0.5)*H;
+    t.el.style.transform='translate('+x.toFixed(1)+'px,'+y.toFixed(1)+'px) translate(-50%,-100%)';
+    t.el.style.opacity=hidden?0:1;
+    t.el.style.pointerEvents=hidden?'none':'auto';
+  });
+}
+
+resize();
+buildChart();
+renderQuiz();
+selectPreset('earth',false);
+exp.group.scale.setScalar(exp.group.userData.base);
+camera.position.set(0,17*0.85+4,17*1.55+8);
+controls.update();
+frame();
+})();
+</script>
+</body>
+</html>
